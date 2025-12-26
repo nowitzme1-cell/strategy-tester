@@ -1,0 +1,5 @@
+{
+  "name": "QuantLeap Trading Dashboard",
+  "description": "A professional-grade trading dashboard that integrates with n8n AI agents to test and validate complex trading strategies in real-time.",
+  "requestFramePermissions": []
+}
