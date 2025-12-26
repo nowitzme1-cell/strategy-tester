@@ -11,31 +11,33 @@ export const verifyWebhook = async (webhookUrl: string): Promise<{
   isCorsError?: boolean;
   isMixedContent?: boolean;
 }> => {
-  if (!webhookUrl) return { success: false, message: 'URL is empty' };
+  if (!webhookUrl || webhookUrl.trim() === '') {
+    return { success: false, message: 'Endpoint URL is missing' };
+  }
   
   // Basic URL validation
   let urlObj: URL;
   try {
     urlObj = new URL(webhookUrl);
   } catch (e) {
-    return { success: false, message: 'Invalid URL format' };
+    return { success: false, message: 'The URL format is invalid.' };
   }
 
-  // Check for Mixed Content (Browser security blocks HTTP calls from HTTPS sites)
+  // Check for Mixed Content (Browser security blocks HTTP calls from HTTPS sites like Vercel)
   const isHttpsSource = window.location.protocol === 'https:';
   const isHttpTarget = urlObj.protocol === 'http:';
   if (isHttpsSource && isHttpTarget) {
     return { 
       success: false, 
-      message: 'Security Block: Cannot call HTTP backend from HTTPS frontend.',
+      message: 'Mixed Content Error: Vercel (HTTPS) cannot talk to HTTP. Use HTTPS or a tunnel.',
       isMixedContent: true 
     };
   }
 
-  const pingPayload = { action: 'ping', timestamp: new Date().toISOString() };
+  const pingPayload = { action: 'ping', timestamp: new Date().toISOString(), origin: window.location.origin };
 
   try {
-    // Attempt 1: Standard CORS fetch (Best case)
+    // Attempt 1: Standard CORS fetch
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -44,31 +46,29 @@ export const verifyWebhook = async (webhookUrl: string): Promise<{
     });
 
     if (response.ok || response.status < 500) {
-      return { success: true, message: 'Connection established' };
+      return { success: true, message: 'Terminal Handshake Successful' };
     }
-    return { success: false, message: `Server returned status ${response.status}` };
+    return { success: false, message: `Server Error: ${response.status}` };
   } catch (error) {
-    // Attempt 2: "Opaque" Probe (Check if server even exists)
-    // This allows us to see if the server is alive but just blocking CORS
+    // Attempt 2: "Opaque" Probe
     try {
       await fetch(webhookUrl, {
         method: 'POST',
-        mode: 'no-cors', // Opaque request
+        mode: 'no-cors',
         body: JSON.stringify(pingPayload),
       });
       
-      // If no-cors fetch doesn't throw, the server is REACHABLE but blocking the browser
       return { 
         success: false, 
-        message: 'CORS Blocked: Server is alive but your backend must allow this origin.',
+        message: 'CORS Block: Server is active but blocking Vercel. Check n8n CORS settings.',
         isCorsError: true 
       };
     } catch (probeError) {
-      console.error('Handshake failed:', error);
       const msg = error instanceof Error ? error.message : String(error);
+      console.error('[QuantLeap] Webhook Reachability Error:', msg);
       return { 
         success: false, 
-        message: msg === 'Failed to fetch' ? 'Server Unreachable: Check URL or Server Status.' : msg 
+        message: msg === 'Failed to fetch' ? 'Endpoint Unreachable: Check if your backend is online.' : msg 
       };
     }
   }
@@ -87,7 +87,7 @@ export const testStrategy = async (
   }
 ): Promise<StrategyResult> => {
   if (!webhookUrl) {
-    throw new Error('Webhook URL not configured.');
+    throw new Error('No backend terminal linked.');
   }
 
   try {
@@ -106,13 +106,14 @@ export const testStrategy = async (
     });
 
     if (!response.ok) {
-      throw new Error(`Agent request failed: ${response.statusText}`);
+      const errorText = await response.text().catch(() => response.statusText);
+      throw new Error(`Agent returned error: ${errorText || response.status}`);
     }
 
     const data = await response.json();
     return data as StrategyResult;
   } catch (error) {
-    console.error('Error testing strategy:', error);
+    console.error('[QuantLeap] Strategy Submission Error:', error);
     throw error;
   }
 };
