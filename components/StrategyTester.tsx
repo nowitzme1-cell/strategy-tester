@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
-import { testStrategy } from '../services/n8nService';
-import { UserProfile, StrategyResult, HistoryItem, TradingStats } from '../types';
-import TradingChart from './TradingChart';
+import { testStrategy } from '../services/n8nService.ts';
+import { UserProfile, StrategyResult, HistoryItem, TradingStats } from '../types.ts';
+import TradingChart from './TradingChart.tsx';
 
 interface StrategyTesterProps {
   user: UserProfile;

@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { UserProfile } from './types';
-import StrategyTester from './components/StrategyTester';
-import { verifyWebhook } from './services/n8nService';
+import { UserProfile } from './types.ts';
+import StrategyTester from './components/StrategyTester.tsx';
+import { verifyWebhook } from './services/n8nService.ts';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -17,7 +17,7 @@ const App: React.FC = () => {
   // Helper to safely get hostname without crashing
   const safeGetHostname = (url: string) => {
     try {
-      if (!url) return 'no-endpoint-set';
+      if (!url || typeof url !== 'string' || url.trim() === '') return 'no-endpoint-set';
       return new URL(url).hostname;
     } catch (e) {
       return 'invalid-url';
@@ -60,7 +60,7 @@ const App: React.FC = () => {
   };
 
   const handleSync = useCallback(async (urlToSync: string) => {
-    if (!urlToSync) {
+    if (!urlToSync || urlToSync.trim() === '') {
       setConnectionStatus('idle');
       return;
     }
@@ -75,7 +75,6 @@ const App: React.FC = () => {
       setStatusMessage('Stable Connection');
       localStorage.setItem('n8n_webhook', urlToSync);
       setWebhookUrl(urlToSync);
-      // Close config if it was open
       setShowConfig(false);
     } else {
       if (result.isMixedContent) setConnectionStatus('mixed_content');
@@ -99,7 +98,7 @@ const App: React.FC = () => {
     if (webhookUrl) {
       handleSync(webhookUrl);
     } else {
-      setShowConfig(true); // Suggest config on first run if no URL
+      setShowConfig(true); 
     }
   }, [handleSync, webhookUrl]);
 
